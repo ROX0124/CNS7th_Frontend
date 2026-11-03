@@ -1,10 +1,14 @@
-import { cookies } from "next/headers";
+import { readAccessToken } from "@/lib/readAccessToken";
 import { AuthProvider } from "@/component/providers/AuthProvider";
-import { ACCESS_TOKEN_COOKIE } from "@/component/providers/authCookie";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
 export default async function AuthShell({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
+  const session = await getServerSession(authOptions);
+  console.log("=============getServerSession=============");
+  console.log(session);
+  console.log("=============AuthShell=============");
+  console.log(session);
 
-  return <AuthProvider accessToken={accessToken}>{children}</AuthProvider>;
+  return <AuthProvider accessToken={session?.accessToken ?? null}>{children}</AuthProvider>;
 }
