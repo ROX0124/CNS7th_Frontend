@@ -10,31 +10,52 @@ export default function FormField({
   type,
   placeholder,
   value,
+  defaultValue = "",
   error,
   isClearable,
   required = true,
   autoComplete,
+  form,
+  inputClassName,
+  showPasswordToggle = true,
+  collapseEmptyError = false,
+  errorClassName,
   onChange,
 }: {
   id: string;
   name: string;
   type: "text" | "password" | "email";
   placeholder: string;
-  value: string;
+  value?: string;
+  defaultValue?: string;
   error?: string;
   isClearable?: boolean;
   required?: boolean;
   autoComplete?: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  form?: string;
+  inputClassName?: string;
+  showPasswordToggle?: boolean;
+  collapseEmptyError?: boolean;
+  errorClassName?: string;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   const errorId = `${id}-error`;
   const [isVisible, setIsVisible] = useState(false);
-  const showClear = Boolean(isClearable && value);
-  const showToggle = type === "password";
+  const isControlled = value !== undefined;
+  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+  const currentValue = isControlled ? value : uncontrolledValue;
+  const showClear = Boolean(isClearable && currentValue);
+  const showToggle = showPasswordToggle && type === "password";
   const inputType = showToggle && isVisible ? "text" : type;
 
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isControlled) setUncontrolledValue(event.target.value);
+    onChange?.(event);
+  };
+
   const handleClear = () => {
-    onChange({
+    if (!isControlled) setUncontrolledValue("");
+    onChange?.({
       target: { name, value: "" },
     } as React.ChangeEvent<HTMLInputElement>);
   };
@@ -46,14 +67,18 @@ export default function FormField({
           id={id}
           type={inputType}
           name={name}
+          form={form}
           placeholder={placeholder}
-          value={value}
+          value={currentValue}
           required={required}
           autoComplete={autoComplete}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
-          className={showClear && showToggle ? "pr-14" : showClear || showToggle ? "pr-8" : undefined}
-          onChange={onChange}
+          className={[
+            inputClassName,
+            showClear && showToggle ? "pr-14" : showClear || showToggle ? "pr-8" : undefined,
+          ].filter(Boolean).join(" ")}
+          onChange={handleChange}
         />
         {showToggle ? (
           <button
@@ -77,7 +102,9 @@ export default function FormField({
           </button>
         ) : null}
       </div>
-      <ErrorMessage id={errorId} error={error} />
+      {collapseEmptyError && !error ? null : (
+        <ErrorMessage id={errorId} error={error} className={errorClassName} />
+      )}
     </div>
   );
 }

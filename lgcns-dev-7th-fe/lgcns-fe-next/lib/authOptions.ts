@@ -1,5 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import KakaoProvider from "next-auth/providers/kakao";
+import GoogleProvider from "next-auth/providers/google";
 
 import { userService } from "@/service/userService";
 
@@ -34,13 +36,67 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
+    KakaoProvider({
+      clientId: process.env.KAKAO_CLIENT_ID ?? "",
+      clientSecret: process.env.KAKAO_CLIENT_SECRET ?? "",
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+    }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.accessToken = user.accessToken;
-        token.expiresIn = user.expiresIn;
-        token.id = user.id;
+    async jwt({ token, user, account, profile }) {
+      if (account?.provider === "kakao") {
+        const kakao = profile as {
+          id?: number;
+          kakao_account?: {
+            email?: string;
+            profile?: { nickname?: string; profile_image_url?: string };
+          };
+        };
+        console.log("=============kakao profile=============");
+        console.log(profile);
+        console.log("=============kakao account=============");
+        console.log(account);
+        console.log("=============kakao user=============");
+        console.log(user);
+
+        token.accessToken = account.access_token;
+        if (typeof account.expires_at === "number") {
+          token.expiresIn = account.expires_at - Math.floor(Date.now() / 1000);
+        }
+        token.id = user?.id ?? String(kakao.id ?? account.providerAccountId);
+        token.email = user?.email ?? kakao.kakao_account?.email ?? token.email;
+        token.name = user?.name ?? kakao.kakao_account?.profile?.nickname ?? token.name;
+        token.profileImageUrl =
+          user?.image ?? kakao.kakao_account?.profile?.profile_image_url ?? token.profileImageUrl;
+        return token;
+      }
+
+      if (account?.provider === "google") {
+        const google = profile as {
+          id?: string;
+          email?: string;
+          name?: string;
+          image?: string;
+        };
+        console.log("=============google profile=============");
+        console.log(profile);
+        console.log("=============google account=============");
+        console.log(account);
+        console.log("=============google user=============");
+        console.log(user);
+
+        token.accessToken = account.access_token;
+        if (typeof account.expires_at === "number") {
+          token.expiresIn = account.expires_at - Math.floor(Date.now() / 1000);
+        }
+        token.id = user?.id ?? String(google.id ?? account.providerAccountId);
+        token.email = user?.email ?? google.email ?? token.email;
+        token.name = user?.name ?? google.name ?? token.name;
+        token.profileImageUrl = user?.image ?? google.image ?? token.profileImageUrl;
+        return token;
       }
       return token;
     },
@@ -51,7 +107,10 @@ export const authOptions: NextAuthOptions = {
         id: token.id ?? "",
         email: token.email ?? "",
         name: token.name ?? "",
+        profileImageUrl: token.profileImageUrl,
       };
+      console.log("=============session=============");
+      console.log(session);
       return session;
     },
     async redirect({ url, baseUrl }) {
